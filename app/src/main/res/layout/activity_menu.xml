@@ -100,6 +100,12 @@
             android:onClick="settingsButtonPressed"
             android:src="@drawable/settings"/>
 
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Original code: https://github.com/RodrigoDLPontes/WiFiFileTransfer\nUpdated fork: https://github.com/ltrudu/WiFiFileTransfer" />
+
     </LinearLayout>
 
     <com.google.android.gms.ads.AdView

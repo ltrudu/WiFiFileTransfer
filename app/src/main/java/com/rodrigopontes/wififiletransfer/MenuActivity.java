@@ -1,5 +1,11 @@
 package com.rodrigopontes.wififiletransfer;
 
+// Original code made by:
+// https://github.com/RodrigoDLPontes/WiFiFileTransfer
+
+// Updated fork:
+// https://github.com/ltrudu/WiFiFileTransfer
+
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
