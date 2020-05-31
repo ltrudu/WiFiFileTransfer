@@ -55,7 +55,8 @@ public class HttpFileServer extends NanoHTTPD {
 				Map<String, String> files = new HashMap<>();
 				session.parseBody(files);
 				bufferedInputStream = new BufferedInputStream(new FileInputStream(files.get("FileInput")));
-				bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(currentPath + "/" + session.getParms().get("FileInput")));
+				String outputPath = new File(Environment.getExternalStorageDirectory(), session.getUri()) + "/" + session.getParms().get("FileInput");
+				bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(outputPath));
 				byte[] data = new byte[32768];
 				while(bufferedInputStream.read(data) > 0) {
 					menuActivity.activateHDDLED();

@@ -1,18 +1,21 @@
 package com.rodrigopontes.wififiletransfer;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
-import android.os.Environment;
+import android.os.Build;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -22,6 +25,16 @@ import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 
 public class MenuActivity extends AppCompatActivity {
+
+	private static final int DEMO_PERMISSION = 1;
+	private static final String[] DEMO_PERMISSIONS_LIST = new String[]{
+			Manifest.permission.WRITE_EXTERNAL_STORAGE,
+			Manifest.permission.INTERNET,
+			Manifest.permission.ACCESS_NETWORK_STATE,
+			Manifest.permission.READ_EXTERNAL_STORAGE,
+			Manifest.permission.ACCESS_WIFI_STATE
+	};
+
 
 	TextView instructionsTextView;
 	TextView ipAddressTextView;
@@ -42,6 +55,8 @@ public class MenuActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_menu);
 
+		checkPermissions();
+
 		instructionsTextView = (TextView)findViewById(R.id.instructions_text_view);
 		ipAddressTextView = (TextView)findViewById(R.id.ip_address_text_view);
 		switchButton = (ImageButton)findViewById(R.id.switch_button);
@@ -49,6 +64,29 @@ public class MenuActivity extends AppCompatActivity {
 		hddLed = (ImageView)findViewById(R.id.hdd_led);
 		adView = (AdView)findViewById(R.id.adView);
 
+	}
+
+	private void checkPermissions()
+	{
+		boolean shouldNotRequestPermissions = true;
+		if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1) {
+			for(String permission : DEMO_PERMISSIONS_LIST)
+			{
+				shouldNotRequestPermissions &= (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED);
+			}
+		}
+
+		if (shouldNotRequestPermissions) {
+			setupServer();
+		}
+		else
+		{
+			ActivityCompat.requestPermissions(this,DEMO_PERMISSIONS_LIST, DEMO_PERMISSION);
+		}
+	}
+
+	private void setupServer()
+	{
 		new AsyncTask<Void, Void, AdRequest>() {
 			@Override
 			protected AdRequest doInBackground(Void... params) {
@@ -68,25 +106,25 @@ public class MenuActivity extends AppCompatActivity {
 		IntentFilter intentFilter = new IntentFilter();
 		intentFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
 		registerReceiver(new BroadcastReceiver() {
-			                 @Override
-			                 public void onReceive(Context context, Intent intent) {
-				                 hasConnection = cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI;
-				                 if(hasConnection) {
-					                 WifiManager wifiManager = (WifiManager)getSystemService(WIFI_SERVICE);
-					                 final int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
-					                 formattedIpAddress = String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
-							                 (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
-					                 switchButton.setImageResource(R.drawable.switch_button_off);
-					                 instructionsTextView.setText(R.string.serverOffline);
-					                 ipAddressTextView.setText("");
-				                 } else {
-					                 if(httpFileServer != null) httpFileServer.terminate();
-					                 instructionsTextView.setText(R.string.noActiveConnection);
-					                 ipAddressTextView.setText(R.string.pleaseConnectToWiFiFirst);
-					                 switchButton.setImageResource(R.drawable.switch_button_off);
-				                 }
-			                 }
-		                 }
+							 @Override
+							 public void onReceive(Context context, Intent intent) {
+								 hasConnection = cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().getType() == ConnectivityManager.TYPE_WIFI;
+								 if(hasConnection) {
+									 WifiManager wifiManager = (WifiManager)getSystemService(WIFI_SERVICE);
+									 final int ipAddress = wifiManager.getConnectionInfo().getIpAddress();
+									 formattedIpAddress = String.format("%d.%d.%d.%d", (ipAddress & 0xff), (ipAddress >> 8 & 0xff),
+											 (ipAddress >> 16 & 0xff), (ipAddress >> 24 & 0xff));
+									 switchButton.setImageResource(R.drawable.switch_button_off);
+									 instructionsTextView.setText(R.string.serverOffline);
+									 ipAddressTextView.setText("");
+								 } else {
+									 if(httpFileServer != null) httpFileServer.terminate();
+									 instructionsTextView.setText(R.string.noActiveConnection);
+									 ipAddressTextView.setText(R.string.pleaseConnectToWiFiFirst);
+									 switchButton.setImageResource(R.drawable.switch_button_off);
+								 }
+							 }
+						 }
 
 				, intentFilter);
 	}
@@ -120,6 +158,51 @@ public class MenuActivity extends AppCompatActivity {
 	protected void onDestroy() {
 		super.onDestroy();
 		if(httpFileServer != null) httpFileServer.terminate();
+	}
+
+	@Override
+	public void onRequestPermissionsResult(int requestCode,  String permissions[], int[] grantResults) {
+		switch (requestCode) {
+			case DEMO_PERMISSION:
+				boolean allPermissionGranted = true;
+				for(int grantResult : grantResults)
+				{
+					allPermissionGranted &= (grantResult == PackageManager.PERMISSION_GRANTED);
+				}
+				if (allPermissionGranted) {
+					setupServer();
+				} else {
+					ShowAlertDialog(MenuActivity.this, "Error", "Please grant the necessary permission to launch the application.");
+				}
+				return;
+		}
+	}
+
+	private void ShowAlertDialog(Context context, String title, String message)
+	{
+		AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
+				context);
+
+		// set title
+		alertDialogBuilder.setTitle(title);
+
+		// set dialog message
+		alertDialogBuilder
+				.setMessage(message)
+				.setCancelable(false)
+				.setPositiveButton("OK",new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog,int id) {
+						// if this button is clicked, close
+						// current activity
+						checkPermissions();
+					}
+				});
+
+		// create alert dialog
+		AlertDialog alertDialog = alertDialogBuilder.create();
+
+		// show it
+		alertDialog.show();
 	}
 
 	public void switchButtonPressed(View view) {
@@ -227,5 +310,18 @@ public class MenuActivity extends AppCompatActivity {
 				}
 			}
 		}.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+	}
+
+	private void alertAlert(String msg) {
+		new AlertDialog.Builder(MenuActivity.this)
+				.setTitle("Permission Request")
+				.setMessage(msg)
+				.setCancelable(false)
+				.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						// do somthing here
+					}
+				})
+				.show();
 	}
 }
